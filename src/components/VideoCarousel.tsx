@@ -1,6 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
+
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from "gsap/all";
+gsap.registerPlugin(ScrollTrigger);
 
 import { highlightsSlides } from '../constants';
 import { playImg, pauseImg, replayImg } from '../utils';
@@ -23,6 +26,7 @@ const VideoCarousel = () => {
   const { isEnd, startPlay, videoId, isLastVideo, isPlaying } = video;
 
   useEffect(() => {
+    // play the video after metadata has been loaded and pushed unto the loadedData array
     if (loadedData.length > 3) {
       if (!isPlaying) {
         videoRef.current[videoId]!.pause();
@@ -32,9 +36,14 @@ const VideoCarousel = () => {
     }
   }, [startPlay, videoId, isPlaying, loadedData]);
 
-  console.log(videoRef, 'videoRef');
-
   useGSAP(() => {
+    // slider animation to move the video out of the screen and bring the next video in
+    gsap.to('#slider', {
+      transform: `translateX(${-100 * videoId}%)`,
+      duration: 2,
+      ease: 'power2.inOut', // show visualizer https://gsap.com/docs/v3/Eases
+    });
+
     gsap.to('#video', {
       scrollTrigger: {
         trigger: '#video',
@@ -48,19 +57,74 @@ const VideoCarousel = () => {
         }));
       },
     });
-  }, []);
+  }, [isEnd, videoId]);
 
   useEffect(() => {
-    const currentProgress = 0;
+    let currentProgress = 0;
     let span = videoSpanRef.current;
 
     if (span[videoId]) {
-      // animate the progress of the video
+      // animate the progress of the video (animation to move the indicator)
       let animation = gsap.to(span[videoId], {
-        onUpdate: () => {},
+        onUpdate: () => {
+          // getting the progress of the animation and converting it to percentage
+          const progress = Math.ceil(animation.progress() * 100);
+          // console.log(progress, 'progress');
 
-        onComplete: () => {},
+          if (progress != currentProgress) {
+            currentProgress = progress;
+
+            // set the width of the progress bar
+            gsap.to(videoDivRef.current[videoId], {
+              width:
+                window.innerWidth < 760
+                  ? '10vw'
+                  : window.innerWidth < 1200
+                  ? '10vw'
+                  : '4vw',
+            });
+
+            // set the background color of the progress bar
+            gsap.to(span[videoId], {
+              width: `${currentProgress}%`,
+              backgroundColor: 'white',
+            });
+          }
+        },
+        
+        // when the video is ended, replace the progress bar with the indicator and change the background color
+        onComplete: () => {
+          if (isPlaying) {
+            gsap.to(videoDivRef.current[videoId], {
+              width: '12px',
+            });
+
+            gsap.to(videoDivRef.current[videoId], {
+              backgroundColor: '#afafaf',
+            });
+          }
+        },
       });
+
+      if (videoId === 0) {
+        animation.restart();
+      }
+
+      // update the progress bar
+      const animationUpdate = () => {
+
+        animation.progress(
+          videoRef.current[videoId]!.currentTime / highlightsSlides[videoId].videoDuration
+        );
+      };
+
+      if (isPlaying) {
+        // ticker to update the progress bar
+        gsap.ticker.add(animationUpdate);
+      } else {
+        // remove the ticker when the video is paused (progress bar is stopped)
+        gsap.ticker.remove(animationUpdate);
+      }
     }
   }, [videoId, startPlay]);
 
@@ -69,13 +133,14 @@ const VideoCarousel = () => {
     event: React.SyntheticEvent<HTMLVideoElement, Event>
   ) => setLoadedData((prev) => [...prev, event]);
 
-  const handleProcess = (process: string, index: number) => {
+  // video id is the id for every video until id becomes number 3
+  const handleProcess = (process: string, index?: number) => {
     switch (process) {
       case 'video-end':
         setVideo((prev) => ({
           ...prev,
           isEnd: true,
-          videoId: index + 1,
+          videoId: index! + 1,
         }));
         break;
 
@@ -101,21 +166,33 @@ const VideoCarousel = () => {
         }));
         break;
 
+      case 'pause':
+        setVideo((prev) => ({
+          ...prev,
+          isPlaying: !prev.isPlaying,
+        }));
+        break;
+
       default:
         return video;
     }
   };
+
+  // console.log(videoRef, 'videoRef');
+  // console.log(loadedData, 'loadedData');
 
   return (
     <>
       <div className='flex items-center'>
         {highlightsSlides.map((list, index) => (
           <div key={list.id} id='slider' className='pr-10 sm:pr-20'>
-            {/* <div>HELLO</div> */}
             <div className='video-carousel_container'>
               <div className='bg-black overflow-hidden flex-center w-full h-full rounded-3xl'>
                 <video
                   id='video'
+                  className={`${
+                    list.id === 2 && 'translate-x-44 pointer-events-none'
+                  }`}
                   playsInline
                   muted
                   preload='auto'
@@ -126,6 +203,12 @@ const VideoCarousel = () => {
                       isPlaying: true,
                     }));
                   }}
+                  onEnded={() => {
+                    index !== 3
+                      ? handleProcess('video-end', index)
+                      : handleProcess('video-last', index);
+                  }}
+                  // after metadata has been loaded do we play the video
                   onLoadedMetadata={(e) => {
                     handleLoadedMetadata(index, e);
                   }}
@@ -134,9 +217,9 @@ const VideoCarousel = () => {
                 </video>
               </div>
 
-              <div className='absolute top-12 left-[5%]'>
+              <div className='absolute top-12 left-[5%] z-10'>
                 {list.textLists.map((text) => (
-                  <p key={text} className='text-xl font-medium md:text-2xl'>
+                  <p key={text} className='font-medium text-xl md:text-2xl'>
                     {text}
                   </p>
                 ))}
