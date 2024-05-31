@@ -1,3 +1,22 @@
+import gsap from 'gsap';
+
+
+export const animateWithGsap = (
+  target: string,
+  animationOptions: any,
+  scrollOptions?: any
+) => {
+  gsap.to(target, {
+    ...animationOptions,
+    scrollTrigger: {
+      trigger: target,
+      toggleActions: 'restart reverse restart reverse',
+      start: 'top 85%',
+      ...scrollOptions,
+    },
+  });
+};
+
 export const animateWithGsapTimeline = (
   timeline: any,
   rotationRef: any,
