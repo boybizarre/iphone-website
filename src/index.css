@@ -43,7 +43,7 @@ canvas {
   }
 
   .color-container {
-    @apply flex items-center justify-center px-4 py-4 rounded-full bg-gray-300 backdrop-blur
+    @apply flex items-center justify-center p-4 rounded-full bg-gray-300 backdrop-blur
   }
 
   .size-btn-container {

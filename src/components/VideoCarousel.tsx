@@ -97,13 +97,15 @@ const VideoCarousel = () => {
           if (isPlaying) {
             gsap.to(videoDivRef.current[videoId], {
               width: '12px',
-            });
-
-            gsap.to(videoDivRef.current[videoId], {
               backgroundColor: '#afafaf',
             });
+
+            // gsap.to(videoDivRef.current[videoId], {
+            //   backgroundColor: '#afafaf',
+            // });
           }
         },
+        
       });
 
       if (videoId === 0) {
